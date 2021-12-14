@@ -75,6 +75,10 @@ main = do
         datumToEncode = Plutus.builtinDataToData $ toBuiltinData datum
         encoded = Data.Aeson.encode (scriptDataToJson ScriptDataJsonDetailedSchema $ fromPlutusData datumToEncode) 
 
+      putStrLn $ "nftSymbol: " ++ nftSymbol
+      putStrLn $ "nftTokenName': " ++ nftTokenName'
+      putStrLn $ "fractionTokenName': " ++ fractionTokenName'
+      putStrLn $ "nftSymbol: " ++ nftSymbol
       putStrLn $ "Writing output to: " ++ validatorname
       writePlutusScript scriptnum validatorname validatorScript validatorShortBs
 

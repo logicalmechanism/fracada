@@ -23,6 +23,7 @@ import qualified PlutusTx
 import           PlutusTx.IsData
 import           PlutusTx.Prelude       hiding (Semigroup(..), unless)
 import           Ledger                 hiding (singleton)
+import           Ledger.Ada (adaValueOf, lovelaceValueOf)
 import           Ledger.Constraints     as Constraints
 import qualified Ledger.Typed.Scripts   as Scripts
 import qualified Ledger.Contexts                   as Validation
@@ -164,7 +165,7 @@ fractionNFT :: ToFraction -> Contract w FracNFTSchema Text ()
 fractionNFT ToFraction {nftAsset, fractions, fractionTokenName} = do
   -- pay nft to contract
   -- pay minted tokens back to signer
-    pk    <- Contract.ownPubKey
+    pk    <- Contract.ownPubKeyHash
     let
       --find the minting script instance
       mintingScript = mintFractionTokensPolicy nftAsset fractions fractionTokenName
@@ -172,7 +173,11 @@ fractionNFT ToFraction {nftAsset, fractions, fractionTokenName} = do
       -- define the value to mint (amount of tokens) and be paid to signer
       currency = scriptCurrencySymbol mintingScript
       tokensToMint =  Value.singleton currency fractionTokenName fractions
-      payBackTokens = mustPayToPubKey (pubKeyHash pk) tokensToMint
+      payBackTokens = mustPayToPubKey pk tokensToMint
+
+      -- pay myself 4 ada
+      valueToSelf = adaValueOf 4
+
       -- value of NFT
       valueToScript = assetClassValue nftAsset 1
       -- keep the minted amount and asset class in the datum
@@ -184,16 +189,16 @@ fractionNFT ToFraction {nftAsset, fractions, fractionTokenName} = do
                 Constraints.otherScript validator
       tx      = Constraints.mustMintValue tokensToMint <>
                 Constraints.mustPayToOtherScript (fractionNftValidatorHash nftAsset) datum valueToScript <>
+                Constraints.mustPayToPubKey pk valueToSelf <>
                 payBackTokens
-    ledgerTx <- submitTxConstraintsWith @Void lookups tx
-    void $ awaitTxConfirmed $ txId ledgerTx
+    ledgerTx <- submitTxConstraintsWith @Void lookups tx  >>= awaitTxConfirmed . getCardanoTxId
     Contract.logInfo @String $ printf "forged %s" (show fractions)
 
 returnNFT :: AssetClass -> Contract w FracNFTSchema Text ()
 returnNFT nftAsset = do
   -- pay nft to signer
   -- burn tokens
-    pk    <- Contract.ownPubKey
+    pk    <- Contract.ownPubKeyHash
     utxos <- utxosAt $ fractionNftValidatorAddress nftAsset
     let
       -- declare the NFT value
@@ -205,7 +210,7 @@ returnNFT nftAsset = do
     -- assuming that all the fraction tokens are in the owner's `ownPubkey` address. For tracing it is good enough,
     -- though for real-use-cases it is more nuanced, as the owner can have them on different
     -- UTxOs.
-    futxos <- utxosAt (Ledger.pubKeyAddress pk)
+    futxos <- utxosAt (pubKeyHashAddress pk)
     FractionNFTDatum {tokensClass, totalFractions } <- extractData nftTx
     let
       tokensAsset = AssetClass (tokensCurrency, fractionTokenName) 
@@ -222,14 +227,13 @@ returnNFT nftAsset = do
                 Constraints.otherScript validator <>
                 Constraints.unspentOutputs utxos' <>
                 Constraints.unspentOutputs fracTokenUtxos <>
-                Constraints.ownPubKeyHash (pubKeyHash pk)
+                Constraints.ownPubKeyHash pk
 
       tx      = Constraints.mustMintValue tokensToBurn <>
                 Constraints.mustSpendScriptOutput nftRef ( Redeemer $ toBuiltinData () ) <>
-                Constraints.mustPayToPubKey (pubKeyHash pk) valueToWallet
+                Constraints.mustPayToPubKey pk valueToWallet
 
-    ledgerTx <- submitTxConstraintsWith @Void lookups tx
-    void $ awaitTxConfirmed $ txId ledgerTx
+    ledgerTx <- submitTxConstraintsWith @Void lookups tx  >>= awaitTxConfirmed . getCardanoTxId
     Contract.logInfo @String $ printf "burnt %s" (show totalFractions)
 
 endpoints :: Contract () FracNFTSchema Text ()

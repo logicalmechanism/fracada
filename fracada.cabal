@@ -238,6 +238,102 @@ executable           fracada-scripts
                       ScopedTypeVariables
                       StandaloneKindSignatures
 
+
+executable pab
+  main-is: Main.hs
+  hs-source-dirs: pab, src
+  other-modules:     Fracada
+  ghc-options:
+    -threaded -Wall
+  build-depends:
+    base >= 4.9 && < 5
+    , aeson
+    , bytestring
+    , containers
+    , data-default
+    , openapi3
+    , freer-extras
+    , freer-simple
+    , playground-common
+    , plutus-tx
+    , plutus-ledger
+    , plutus-ledger-constraints
+    , plutus-pab
+    , plutus-tx-plugin
+    , plutus-contract
+    , prettyprinter
+    , purescript-bridge
+    , text
+
+  default-language:   Haskell2010
+  default-extensions: DataKinds
+                      DeriveAnyClass
+                      DeriveGeneric
+                      DerivingStrategies
+                      ExplicitForAll
+                      FunctionalDependencies
+                      GADTs
+                      MultiParamTypeClasses
+                      NamedFieldPuns
+                      OverloadedStrings
+                      PolyKinds
+                      KindSignatures
+                      StandaloneDeriving
+                      TemplateHaskell
+                      TypeApplications
+                      TypeFamilies
+                      TypeOperators
+                      MultiParamTypeClasses
+                      ScopedTypeVariables
+                      StandaloneKindSignatures
+
+executable pab-sim
+  main-is: Main.hs
+  hs-source-dirs: simulator, src
+  other-modules:     Fracada
+  ghc-options:
+    -threaded -Wall
+  build-depends:
+    base >= 4.9 && < 5
+    , aeson
+    , bytestring
+    , containers
+    , data-default
+    , openapi3
+    , freer-extras
+    , freer-simple
+    , playground-common
+    , plutus-tx
+    , plutus-ledger
+    , plutus-pab
+    , plutus-tx-plugin
+    , plutus-contract
+    , prettyprinter
+    , purescript-bridge
+    , text
+
+  default-language:   Haskell2010
+  default-extensions: DataKinds
+                      DeriveAnyClass
+                      DeriveGeneric
+                      DerivingStrategies
+                      ExplicitForAll
+                      FunctionalDependencies
+                      GADTs
+                      MultiParamTypeClasses
+                      NamedFieldPuns
+                      OverloadedStrings
+                      PolyKinds
+                      KindSignatures
+                      StandaloneDeriving
+                      TemplateHaskell
+                      TypeApplications
+                      TypeFamilies
+                      TypeOperators
+                      MultiParamTypeClasses
+                      ScopedTypeVariables
+                      StandaloneKindSignatures
+
 test-suite          fracada-test
   type:             exitcode-stdio-1.0
   main-is:          Spec.hs
