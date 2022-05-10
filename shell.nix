@@ -1,1 +1,1 @@
-(import ../plutus/shell.nix)
+(import ../plutus-apps/shell.nix)

@@ -1,35 +1,19 @@
-
 {-# LANGUAGE OverloadedStrings   #-}
 import           Prelude
 import           System.Environment
-
 import           Cardano.Api
 import           Cardano.Api.Shelley
 import           Codec.Serialise
-
 import qualified Cardano.Ledger.Alonzo.Data as Alonzo
 import qualified Plutus.V1.Ledger.Api as Plutus
-
 import qualified Data.ByteString.Short as SBS
 import qualified Data.ByteString.Lazy as LB
-
 import           Ledger                     (datumHash)
-
-
 import           Fracada
-
 import          Plutus.V1.Ledger.Value
 import           Plutus.V1.Ledger.Api
 import Data.String                         (IsString (..))
 import           Data.Aeson
-
--- test data
--- nftCurrencySymbol = fromString  "6b8d07d69639e9413dd637a1a815a7323c69c86abbafb66dbfdb1aa7" 
--- nftTokenName =  "" 
--- fractionTokenName =  "FracadaToken" 
--- numberOfFractions = 10 :: Integer 
--- nft = AssetClass (nftCurrencySymbol, nftTokenName)
--- fractionToken = Plutus.TokenName fractionTokenName
 
 main :: IO ()
 main = do
@@ -85,6 +69,7 @@ main = do
 
       writeFile "currency-id.txt" (show $ curSymbol nft numberOfFractions fractionToken)        
 
+      putStrLn $ "encoded datum: " ++ show encoded
       LB.writeFile "datum.json" encoded
       writeFile "datum-hash.txt" $ show dHash
 

@@ -38,7 +38,7 @@ main = do
     runEmulatorTraceIO' def emCfg scenario2
 
 emCfg :: EmulatorConfig
-emCfg = EmulatorConfig (Left $ Map.fromList [(knownWallet w, v) | w <- [1 .. 2]]) def def
+emCfg = EmulatorConfig (Left $ Map.fromList [(knownWallet w, v) | w <- [1 .. 2]]) def
     where
         v = Ada.lovelaceValueOf 1000_000_000 <> assetClassValue nft 1
 
