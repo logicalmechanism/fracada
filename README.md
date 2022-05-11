@@ -1,5 +1,5 @@
 <h1 align="center">
-  Fracada
+  Fracada - FORK
 </h1>
 <p align="center">Plutus dApp which enables users to fractionalize their NFTs.</p>
 
