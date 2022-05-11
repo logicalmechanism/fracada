@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create A Sale</title>
+    <script src="https://bundle.run/buffer@6.0.3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@stricahq/typhonjs"></script>
+    <script src='https://cdn.jsdelivr.net/npm/bignumber.js'></script>
+    <script src='typhonEndpoints.js'></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+</head>
+<body>
+<p>THIS IS TYPHON ONLY TEST</p>
+<button id="connectButton" disabled>Connect to Typhon Wallet</button>
+
+<button id="createSaleButton" style="display: none;">Create Sale</button>
+<button id="removeSaleButton" style="display: none;">Remove Sale</button>
+<button id="completeSaleButton" style="display: none;">Complete Sale</button>
+<button id="updateSaleButton" style="display: none;">Update Sale</button>
+
+<script>
+    $(document).ready(async function () {
+        // Get References
+        const $connectButton = $('button#connectButton');
+        const $createSaleButton = $('button#createSaleButton');
+        const $removeSaleButton = $('button#removeSaleButton');
+        const $completeSaleButton = $('button#completeSaleButton');
+        const $updateSaleButton = $('button#updateSaleButton');
+        let TyphonWallet = null;
+
+        // Helper functions
+        const isEnabled = async () => {
+            try {
+                const result = await TyphonWallet.isEnabled();
+                return result.status === true && result.data === true;
+            } catch (e) {
+                return false;
+            }
+        };
+        const enableWallet = async () => {
+            return await TyphonWallet.enable();
+        };
+
+        // Init
+        setTimeout(async function () {
+            TyphonWallet = window.cardano.typhon;
+            if (await isEnabled()) {
+                $connectButton.hide();
+                $createSaleButton.show();
+                $removeSaleButton.show();
+                $completeSaleButton.show();
+                $updateSaleButton.show();
+            } else {
+                $connectButton.removeAttr('disabled');
+            }
+        }, 500);
+
+        // Handle connect
+        $connectButton.click(async function () {
+            const result = await enableWallet();
+            if (result.status === true) {
+                $connectButton.hide();
+                $createSaleButton.show();
+            } else {
+                alert('You declined to connect the wallet!');
+            }
+        });
+
+        // create a sale
+        $createSaleButton.click(async function () {
+            console.log('Creating A New Token Sale')
+            
+            console.log('get token balance')
+            const balanceResponse = await TyphonWallet.getBalance();
+            const ada = balanceResponse.data.ada;
+            const tokens = balanceResponse.data.tokens;
+            console.log(tokens)
+            // just pick the first one to test it
+            console.log('select first token')
+            const tkn = tokens[3]
+            const tokenForSale = token(tkn.amount, tkn.policyId, tkn.assetName)
+            console.log(tokenForSale);
+            
+            console.log('build datum')
+            const baseAddress = (await TyphonWallet.getAddress()).data
+            const saleDatum = datum(7000000, profitPKH, addrToPKH(baseAddress), stringToHex("uniqueId"))
+            console.log(saleDatum);
+            
+            // call the create endpoint
+            console.log('call endpoint')
+            const tx = await createSale(scriptAddress, [tokenForSale], saleDatum, true)
+            console.log(tx)
+            console.log('done')
+        }); // end of create sale
+
+
+        // remove a sale
+        $removeSaleButton.click(async function () {
+            console.log('Remove A Sale Token');
+
+            console.log('build datum')
+            const baseAddress = (await TyphonWallet.getAddress()).data
+            const saleDatum = datum(7000000, profitPKH, addrToPKH(baseAddress), stringToHex("uniqueId"))
+            const signerAddress = typhonjs.utils.getAddressFromHex("60"+addrToPKH(baseAddress)).addressBech32;
+            
+            console.log('build redeemer')
+            const removeRedeemer = remove_redeemer();
+
+            console.log('building output')
+            const tokens = [token("1000000000", "57fca08abbaddee36da742a839f7d83a7e1d2419f1507fcbf3916522","524245525259")]
+            const removeOutput = txOut(signerAddress, "1689618", tokens);
+
+            console.log('fetching plutus')
+            fetch('./token_sale.plutus')
+            .then(response => response.json())
+            .then(async (data) => {
+                const txId = "8148c26eb97c36ab0eec26599663e5b9f34f404917f322c7967c16a0c35d750f";
+                const index = 0;
+                const plutusScript = data.cborHex;
+                // build script utxo
+                console.log('build script utxo')
+                const scriptUTxO = scriptInput(txId, index, saleDatum, removeRedeemer, {mem: 3138206, steps: 1081621378}, plutusScript);
+                // remove
+                console.log('remove sale')
+                const tx = await removeSale(scriptUTxO, removeOutput, addrToPKH(baseAddress), true);
+                console.log(tx)
+                console.log('done')
+            })
+            .catch(error => console.log(error));
+        }); // end of remove sale
+
+        // complete a sale
+        $completeSaleButton.click(async function () {
+            console.log("Completing a sale")
+
+            console.log('build datum')
+            const baseAddress = (await TyphonWallet.getAddress()).data
+            const buyerPKH = addrToPKH(baseAddress)
+            const sellerPKH = "a2108b7b1704f9fe12c906096ea1634df8e089c9ccfd651abae4a439"
+            const saleDatum = datum(7000000, profitPKH, sellerPKH, stringToHex("uniqueId"))
+            const signerAddress = pkhToAddr(buyerPKH);
+            // console.log(signerAddress)
+            // console.log(buyerPKH)
+            
+            console.log('build redeemer')
+            const buyRedeemer = buy_redeemer(buyerPKH);
+
+            console.log('building output')
+            const profitOutput = txOut(pkhToAddr(profitPKH), "2000000", []);
+            const sellerOutput = txOut(pkhToAddr(sellerPKH), "5000000", []);
+            const tokens = [token("900", "16af70780a170994e8e5e575f4401b1d89bddf7d1a11d6264e0b0c85", "74426967546f6b656e4e616d653132")]
+            const buyerOutput = txOut(signerAddress, "1724100", tokens);
+
+            console.log('fetching plutus')
+            fetch('./token_sale.plutus')
+            .then(response => response.json())
+            .then(async (data) => {
+                const txId = "e18a90edee3493efaad339cd147a21d86b77d9f2fad330c5b0b4cf937013d25d";
+                const index = 1;
+                const plutusScript = data.cborHex;
+                // build script utxo
+                console.log('build script utxo')
+                // estimating mem and steps is hard
+                const scriptUTxO = scriptInput(txId, index, saleDatum, buyRedeemer, {mem: 3138206, steps: 1081621378}, plutusScript);
+                // complete
+                console.log('complete sale')
+                const tx = await completeSale(scriptUTxO, profitOutput, sellerOutput, buyerOutput, buyerPKH, false)
+                console.log(tx)
+                console.log('done')
+            })
+            .catch(error => console.log(error));
+
+        }); // end of complete sale
+
+        // update a sale
+        $updateSaleButton.click(async function () {
+            console.log('updating token sale')
+
+            console.log('build datum')
+            const baseAddress = (await TyphonWallet.getAddress()).data
+            const sellerPKH = addrToPKH(baseAddress)
+            const saleDatum = datum(7000000, profitPKH, sellerPKH, stringToHex("uniqueId"))
+            
+            console.log('build redeemer')
+            const updateRedeemer = update_redeemer();
+
+            console.log('building output')
+            const tokens = [token("1000000000","57fca08abbaddee36da742a839f7d83a7e1d2419f1507fcbf3916522", "524245525259")]
+            const newSaleDatum = datum(8000000, profitPKH, sellerPKH, stringToHex("uniqueId"))
+            const scriptOutput = txOut(scriptAddress, "1689618", tokens, newSaleDatum);
+            console.log(scriptOutput)
+            
+            console.log('fetching plutus')
+            fetch('./token_sale.plutus')
+            .then(response => response.json())
+            .then(async (data) => {
+                const txId = "f472d51d0173a5696e20b5d8bfdae8cdc477d084c13f774f514d19e10090067e";
+                const index = 0;
+                const plutusScript = data.cborHex;
+                // build script utxo
+                console.log('build script utxo')
+                const scriptUTxO = scriptInput(txId, index, saleDatum, updateRedeemer, {mem: 3138206, steps: 1081621378}, plutusScript);
+                // remove
+                console.log('update sale')
+                const tx = await updateSale(scriptUTxO, scriptOutput, sellerPKH, false)
+                console.log(tx)
+                console.log('done')
+            })
+            .catch(error => console.log(error));
+        }); // end of update salee
+
+    });
+</script>
+
+</body>
+</html>
